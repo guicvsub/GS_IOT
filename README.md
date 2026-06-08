@@ -19,6 +19,18 @@ Este projeto serve de apoio para o GES (Global Solution) e utiliza visão comput
 - **NumPy**: Manipulação de arrays e operações matemáticas
 - **Matplotlib**: Visualização de dados e gráficos
 
+## Instruções de Uso
+
+<!-- Adicionar instruções de uso aqui -->
+
+## Execução do Requirements
+
+<!-- Adicionar instruções para instalação das dependências aqui -->
+
+## Vídeo Demonstrativo
+
+<!-- Adicionar link do vídeo demonstrativo do YouTube aqui -->
+
 ## Integrantes
 
 | Nome | RM |
