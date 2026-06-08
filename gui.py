@@ -1,87 +1,19 @@
-import cv2
-import numpy as np
+"""
+Módulo de interface gráfica (GUI) usando Tkinter.
+"""
 import tkinter as tk
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
-import threading
-
-
-def window_size_adjuster(width, height):
-    if width>1200 or height>700:
-        width/=2
-        height/=2
-        width, height = window_size_adjuster(width, height)
-    return round(width), round(height)
-
-
-def get_vegetation_profiles():
-    """
-    Retorna perfis pré-configurados para diferentes tipos de vegetação.
-    Cada perfil contém valores HSV (min e max) para detecção específica.
-    """
-    profiles = {
-        "Padrao": {
-            "h_min": 40, "h_max": 100,
-            "s_min": 60, "s_max": 255,
-            "v_min": 1, "v_max": 160,
-            "descricao": "Vegetação verde padrão (grama, folhas saudáveis)"
-        },
-        "Verde Escuro": {
-            "h_min": 35, "h_max": 75,
-            "s_min": 50, "s_max": 255,
-            "v_min": 30, "v_max": 150,
-            "descricao": "Floresta densa, vegetação sombreada"
-        },
-        "Verde Claro": {
-            "h_min": 40, "h_max": 90,
-            "s_min": 30, "s_max": 200,
-            "v_min": 100, "v_max": 255,
-            "descricao": "Brotos novos, grama clara, vegetação jovem"
-        },
-        "Amarelado": {
-            "h_min": 20, "h_max": 50,
-            "s_min": 50, "s_max": 255,
-            "v_min": 100, "v_max": 255,
-            "descricao": "Folhas secas, vegetação em outono"
-        },
-        "Marron": {
-            "h_min": 0, "h_max": 30,
-            "s_min": 50, "s_max": 255,
-            "v_min": 50, "v_max": 200,
-            "descricao": "Terra seca, folhas mortas, vegetação seca"
-        },
-        "Personalizado": {
-            "h_min": 0, "h_max": 179,
-            "s_min": 0, "s_max": 255,
-            "v_min": 0, "v_max": 255,
-            "descricao": "Ajuste manual via sliders"
-        }
-    }
-    return profiles
-
-
-def get_biome_mapping():
-    """
-    Mapeia tipos de vegetação para biomas brasileiros.
-    """
-    biome_mapping = {
-        "Padrao": "Cerrado",
-        "Verde Escuro": "Floresta Amazônica",
-        "Verde Claro": "Pantanal",
-        "Amarelado": "Caatinga",
-        "Marron": "Mata Atlântica (Seca)"
-    }
-    return biome_mapping
-
-
-def apply_profile(profile_name, profiles):
-    """
-    Aplica os valores do perfil selecionado aos sliders.
-    Retorna o dicionário com os valores do perfil.
-    """
-    if profile_name in profiles:
-        return profiles[profile_name]
-    return profiles["Padrao"]
+import cv2
+from vegetation_profiles import get_vegetation_profiles, get_biome_mapping
+from image_processor import (
+    window_size_adjuster,
+    apply_hsv_filter,
+    calculate_coverage_percentage,
+    create_combined_image,
+    calculate_profile_percentages,
+    identify_predominant_vegetation
+)
 
 
 class VegetationDetectorApp:
@@ -90,21 +22,18 @@ class VegetationDetectorApp:
         self.root.title("Detector de Vegetação - GS_IOT")
         self.root.geometry("1200x800")
 
-        # Carregar perfis
+        # Carregar perfis e biomas
         self.vegetation_profiles = get_vegetation_profiles()
         self.profile_names = list(self.vegetation_profiles.keys())
         self.current_profile_name = self.profile_names[0]
-
-        # Carregar mapeamento de biomas
         self.biome_mapping = get_biome_mapping()
 
         # Variáveis de controle
         self.running = False
         self.cap = None
         self.hsv_sliders_created = False
-        self.hsv_window = None
-        self.use_camera = tk.BooleanVar(value=True)  # True = câmera, False = imagem
-        self.static_image = None  # Imagem estática carregada
+        self.use_camera = tk.BooleanVar(value=True)
+        self.static_image = None
 
         # Criar interface
         self.create_widgets()
@@ -297,7 +226,17 @@ class VegetationDetectorApp:
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
             # Calcular porcentagens para todos os perfis
-            self.calculate_all_profile_percentages(hsv)
+            profile_percentages = calculate_profile_percentages(hsv, self.vegetation_profiles)
+            predominant_profile, predominant_percentage = identify_predominant_vegetation(profile_percentages)
+
+            # Inferir bioma
+            if predominant_profile:
+                biome = self.biome_mapping.get(predominant_profile, "Desconhecido")
+                self.biome_label.config(text=biome)
+                self.predominant_vegetation_label.config(text=f"{predominant_profile} ({predominant_percentage}%)")
+            else:
+                self.biome_label.config(text="--")
+                self.predominant_vegetation_label.config(text="--")
 
             # Obter valores HSV do perfil atual
             if self.current_profile_name == "Personalizado" and self.hsv_sliders_created:
@@ -316,18 +255,11 @@ class VegetationDetectorApp:
                 s_max = profile["s_max"]
                 v_max = profile["v_max"]
 
-            # Criar filtro
-            lower = np.array([h_min, s_min, v_min])
-            upper = np.array([h_max, s_max, v_max])
-            mask = cv2.inRange(hsv, lower, upper)
-
             # Aplicar filtro
-            result = cv2.bitwise_and(frame, frame, mask=mask)
+            result, mask = apply_hsv_filter(frame, h_min, s_min, v_min, h_max, s_max, v_max)
 
             # Calcular porcentagem do perfil atual
-            total_pixels = mask.size
-            pixels_filtrados = cv2.countNonZero(mask)
-            porcentagem = round((pixels_filtrados / total_pixels) * 100, 2)
+            porcentagem = calculate_coverage_percentage(mask)
 
             # Atualizar labels
             self.coverage_label.config(text=f"{porcentagem}%")
@@ -337,7 +269,7 @@ class VegetationDetectorApp:
                 self.status_label.config(text="Rasa", foreground="orange")
 
             # Criar imagem combinada (original + filtrada)
-            combined = self.create_combined_image(frame, result, porcentagem)
+            combined = create_combined_image(frame, result, porcentagem)
 
             # Converter para imagem Tkinter
             combined_rgb = cv2.cvtColor(combined, cv2.COLOR_BGR2RGB)
@@ -348,61 +280,6 @@ class VegetationDetectorApp:
             self.canvas.img_tk = img_tk
             self.canvas.create_image(0, 0, anchor=tk.NW, image=img_tk)
 
-    def calculate_all_profile_percentages(self, hsv):
-        """Calcula a porcentagem de cada perfil na imagem e identifica o predominante"""
-        total_pixels = hsv.size
-        profile_percentages = {}
-
-        for profile_name in self.profile_names:
-            if profile_name != "Personalizado":
-                profile = self.vegetation_profiles[profile_name]
-                lower = np.array([profile["h_min"], profile["s_min"], profile["v_min"]])
-                upper = np.array([profile["h_max"], profile["s_max"], profile["v_max"]])
-                mask = cv2.inRange(hsv, lower, upper)
-                pixels_filtrados = cv2.countNonZero(mask)
-                porcentagem = round((pixels_filtrados / total_pixels) * 100, 2)
-                profile_percentages[profile_name] = porcentagem
-
-        # Identificar perfil com maior porcentagem
-        if profile_percentages:
-            predominant_profile = max(profile_percentages, key=profile_percentages.get)
-            predominant_percentage = profile_percentages[predominant_profile]
-
-            # Inferir bioma
-            biome = self.biome_mapping.get(predominant_profile, "Desconhecido")
-
-            # Atualizar labels
-            self.biome_label.config(text=biome)
-            self.predominant_vegetation_label.config(text=f"{predominant_profile} ({predominant_percentage}%)")
-        else:
-            self.biome_label.config(text="--")
-            self.predominant_vegetation_label.config(text="--")
-
-    def create_combined_image(self, original, filtered, percentage):
-        """Cria imagem combinada com original e filtrada lado a lado"""
-        height, width = original.shape[:2]
-
-        # Criar imagem combinada (2x o tamanho da largura)
-        combined = np.zeros((height, width * 2, 3), dtype=np.uint8)
-
-        # Colocar imagem original à esquerda
-        combined[:, :width] = original
-
-        # Colocar imagem filtrada à direita
-        combined[:, width:] = filtered
-
-        # Adicionar linha divisória
-        cv2.line(combined, (width, 0), (width, height), (255, 255, 255), 2)
-
-        # Adicionar labels
-        # Label "Original"
-        cv2.putText(combined, "Original", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-
-        # Label "Filtrado" com porcentagem
-        cv2.putText(combined, f"Filtrado: {percentage}%", (width + 10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-
-        return combined
-
     def update_frame(self):
         if self.use_camera.get():
             # Modo câmera
@@ -411,9 +288,6 @@ class VegetationDetectorApp:
                 if ret:
                     # Redimensionar frame
                     frame = cv2.resize(frame, (self.new_width, self.new_height))
-
-                    # Converter para HSV
-                    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
                     # Obter valores HSV
                     if self.current_profile_name == "Personalizado" and self.hsv_sliders_created:
@@ -432,18 +306,11 @@ class VegetationDetectorApp:
                         s_max = profile["s_max"]
                         v_max = profile["v_max"]
 
-                    # Criar filtro
-                    lower = np.array([h_min, s_min, v_min])
-                    upper = np.array([h_max, s_max, v_max])
-                    mask = cv2.inRange(hsv, lower, upper)
-
                     # Aplicar filtro
-                    result = cv2.bitwise_and(frame, frame, mask=mask)
+                    result, mask = apply_hsv_filter(frame, h_min, s_min, v_min, h_max, s_max, v_max)
 
                     # Calcular porcentagem
-                    total_pixels = mask.size
-                    pixels_filtrados = cv2.countNonZero(mask)
-                    porcentagem = round((pixels_filtrados / total_pixels) * 100, 2)
+                    porcentagem = calculate_coverage_percentage(mask)
 
                     # Atualizar labels
                     self.coverage_label.config(text=f"{porcentagem}%")
@@ -453,7 +320,7 @@ class VegetationDetectorApp:
                         self.status_label.config(text="Rasa", foreground="orange")
 
                     # Criar imagem combinada (original + filtrada)
-                    combined = self.create_combined_image(frame, result, porcentagem)
+                    combined = create_combined_image(frame, result, porcentagem)
 
                     # Converter para imagem Tkinter
                     combined_rgb = cv2.cvtColor(combined, cv2.COLOR_BGR2RGB)
@@ -479,11 +346,3 @@ class VegetationDetectorApp:
             cv2.destroyWindow("HSV Sliders")
         cv2.destroyAllWindows()
         self.root.destroy()
-
-
-# Iniciar aplicação
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = VegetationDetectorApp(root)
-    root.protocol("WM_DELETE_WINDOW", app.on_closing)
-    root.mainloop()

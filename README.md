@@ -2,7 +2,7 @@
 
 ## Sobre o Projeto
 
-Este projeto serve de apoio para o GES (Global Solution) e utiliza visão computacional para detecção de áreas verdes em imagens estáticas ou vídeos. O sistema detecta o tipo de vegetação do local utilizando cores com o espaço de cor HSV.
+Este projeto serve de apoio para o GS (Global Solution) e utiliza visão computacional para detecção de áreas verdes em imagens estáticas ou vídeos. O sistema detecta o tipo de vegetação do local utilizando cores com o espaço de cor HSV.
 
 ### Funcionalidades
 
@@ -25,7 +25,38 @@ Este projeto serve de apoio para o GES (Global Solution) e utiliza visão comput
 
 ## Execução do Requirements
 
-<!-- Adicionar instruções para instalação das dependências aqui -->
+Para instalar as dependências do projeto, siga os passos abaixo:
+
+### 1. Certifique-se de ter o Python instalado
+- Python 3.7 ou superior
+
+### 2. Instale as dependências
+Execute o seguinte comando no terminal:
+
+```bash
+pip install -r requirements.txt
+```
+
+Ou instale as dependências individualmente:
+
+```bash
+pip install opencv-python
+pip install numpy
+pip install Pillow
+```
+
+### 3. Execute o projeto
+Para executar a aplicação, use:
+
+```bash
+python main.py
+```
+
+Ou, para usar a versão monolítica (não recomendada):
+
+```bash
+python CAMERA.PY
+```
 
 ## Vídeo Demonstrativo
 
