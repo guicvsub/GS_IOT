@@ -43,9 +43,9 @@ def get_vegetation_profiles():
     """
     profiles = {
         "Padrao": {
-            "h_min": 35, "h_max": 85,
-            "s_min": 40, "s_max": 255,
-            "v_min": 40, "v_max": 255,
+            "h_min": 40, "h_max": 100,
+            "s_min": 60, "s_max": 255,
+            "v_min": 1, "v_max": 160,
             "descricao": "Vegetação verde padrão (grama, folhas saudáveis)"
         },
         "Verde Escuro": {
@@ -102,21 +102,25 @@ new_frame_width, new_frame_height = window_size_adjuster(original_frame_width, o
 vegetation_profiles = get_vegetation_profiles()
 profile_names = list(vegetation_profiles.keys())
 
-# Cria janela e trackbars
+# Cria janela
 cv2.namedWindow("HSV Ajuste")
 
-# Trackbar para seleção de perfil
-cv2.createTrackbar("Perfil", "HSV Ajuste", 0, len(profile_names) - 1, nothing)
+# Criar trackbar para cada perfil (funciona como botão toggle)
+profile_trackbars = {}
+for i, profile_name in enumerate(profile_names):
+    cv2.createTrackbar(profile_name, "HSV Ajuste", 0, 1, nothing)
+    profile_trackbars[profile_name] = 0
 
-cv2.createTrackbar("H Min", "HSV Ajuste", 0, 179, nothing)
-cv2.createTrackbar("S Min", "HSV Ajuste", 0, 255, nothing)
-cv2.createTrackbar("V Min", "HSV Ajuste", 0, 255, nothing)
-cv2.createTrackbar("H Max", "HSV Ajuste", 179, 179, nothing)
-cv2.createTrackbar("S Max", "HSV Ajuste", 255, 255, nothing)
-cv2.createTrackbar("V Max", "HSV Ajuste", 255, 255, nothing)
+# Ativar perfil padrão inicialmente
+cv2.setTrackbarPos("Padrao", "HSV Ajuste", 1)
+profile_trackbars["Padrao"] = 1
 
-# Variável para controlar mudança de perfil
-last_profile_index = 0
+# Variáveis para controlar sliders HSV
+hsv_sliders_created = False
+hsv_window_name = "HSV Sliders"
+
+# Variável para controlar perfil atual
+current_profile_name = "Padrao"
 
 while True:
     ret, frame = cap.read()
@@ -125,32 +129,65 @@ while True:
     ## Converte para HSV
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    ## Verificar mudança de perfil
-    current_profile_index = cv2.getTrackbarPos("Perfil", "HSV Ajuste")
-    if current_profile_index != last_profile_index:
-        last_profile_index = current_profile_index
-        profile_name = profile_names[current_profile_index]
-        profile = apply_profile(profile_name, vegetation_profiles)
+    ## Verificar mudança de perfil pelos trackbars individuais
+    selected_profile = None
+    for profile_name in profile_names:
+        trackbar_value = cv2.getTrackbarPos(profile_name, "HSV Ajuste")
+        if trackbar_value == 1:
+            selected_profile = profile_name
+            break
 
-        # Atualizar sliders com valores do perfil (exceto Personalizado)
-        if profile_name != "Personalizado":
-            cv2.setTrackbarPos("H Min", "HSV Ajuste", profile["h_min"])
-            cv2.setTrackbarPos("S Min", "HSV Ajuste", profile["s_min"])
-            cv2.setTrackbarPos("V Min", "HSV Ajuste", profile["v_min"])
-            cv2.setTrackbarPos("H Max", "HSV Ajuste", profile["h_max"])
-            cv2.setTrackbarPos("S Max", "HSV Ajuste", profile["s_max"])
-            cv2.setTrackbarPos("V Max", "HSV Ajuste", profile["v_max"])
+    # Se nenhum perfil selecionado, manter o atual
+    if selected_profile is None:
+        selected_profile = current_profile_name
 
-    ## Ler valores dos sliders
-    h_min = cv2.getTrackbarPos("H Min", "HSV Ajuste")
-    s_min = cv2.getTrackbarPos("S Min", "HSV Ajuste")
-    v_min = cv2.getTrackbarPos("V Min", "HSV Ajuste")
-    h_max = cv2.getTrackbarPos("H Max", "HSV Ajuste")
-    s_max = cv2.getTrackbarPos("S Max", "HSV Ajuste")
-    v_max = cv2.getTrackbarPos("V Max", "HSV Ajuste")
+    # Se mudou de perfil
+    if selected_profile != current_profile_name:
+        # Desativar o perfil anterior
+        cv2.setTrackbarPos(current_profile_name, "HSV Ajuste", 0)
+        profile_trackbars[current_profile_name] = 0
 
-    ## Obter nome do perfil atual
-    current_profile_name = profile_names[current_profile_index]
+        # Ativar o novo perfil
+        current_profile_name = selected_profile
+        cv2.setTrackbarPos(current_profile_name, "HSV Ajuste", 1)
+        profile_trackbars[current_profile_name] = 1
+
+        # Se mudou para Personalizado, criar janela de sliders HSV
+        if current_profile_name == "Personalizado":
+            if not hsv_sliders_created:
+                cv2.namedWindow(hsv_window_name)
+                cv2.createTrackbar("H Min", hsv_window_name, 0, 179, nothing)
+                cv2.createTrackbar("S Min", hsv_window_name, 0, 255, nothing)
+                cv2.createTrackbar("V Min", hsv_window_name, 0, 255, nothing)
+                cv2.createTrackbar("H Max", hsv_window_name, 179, 179, nothing)
+                cv2.createTrackbar("S Max", hsv_window_name, 255, 255, nothing)
+                cv2.createTrackbar("V Max", hsv_window_name, 255, 255, nothing)
+                hsv_sliders_created = True
+        # Se mudou para outro perfil, destruir janela de sliders HSV
+        else:
+            if hsv_sliders_created:
+                cv2.destroyWindow(hsv_window_name)
+                hsv_sliders_created = False
+
+    ## Obter valores HSV baseado no perfil
+    if current_profile_name == "Personalizado" and hsv_sliders_created:
+        # Ler valores dos sliders
+        h_min = cv2.getTrackbarPos("H Min", hsv_window_name)
+        s_min = cv2.getTrackbarPos("S Min", hsv_window_name)
+        v_min = cv2.getTrackbarPos("V Min", hsv_window_name)
+        h_max = cv2.getTrackbarPos("H Max", hsv_window_name)
+        s_max = cv2.getTrackbarPos("S Max", hsv_window_name)
+        v_max = cv2.getTrackbarPos("V Max", hsv_window_name)
+    else:
+        # Usar valores do perfil selecionado
+        profile = vegetation_profiles[current_profile_name]
+        h_min = profile["h_min"]
+        s_min = profile["s_min"]
+        v_min = profile["v_min"]
+        h_max = profile["h_max"]
+        s_max = profile["s_max"]
+        v_max = profile["v_max"]
+
     current_profile_desc = vegetation_profiles[current_profile_name]["descricao"]
 
     ## Criar filtro
