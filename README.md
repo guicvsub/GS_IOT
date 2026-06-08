@@ -1,5 +1,24 @@
 # GS_IOT
 
+## Sobre o Projeto
+
+Este projeto serve de apoio para o GES (Global Solution) e utiliza visão computacional para detecção de áreas verdes em imagens estáticas ou vídeos. O sistema detecta o tipo de vegetação do local utilizando cores com o espaço de cor HSV.
+
+### Funcionalidades
+
+- Detecção de áreas verdes em imagens estáticas
+- Detecção de áreas verdes em vídeos
+- Classificação do tipo de vegetação baseada em cores HSV
+- Definição de cores através de:
+  - Perfis de pré-definição
+  - Slider interativo (similar a slider de volume) implementado no notebook
+
+## Tecnologias Utilizadas
+
+- **OpenCV**: Processamento de imagens e visão computacional
+- **NumPy**: Manipulação de arrays e operações matemáticas
+- **Matplotlib**: Visualização de dados e gráficos
+
 ## Integrantes
 
 | Nome | RM |
