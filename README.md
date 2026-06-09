@@ -52,11 +52,8 @@ Para executar a aplicação, use:
 python main.py
 ```
 
-Ou, para usar a versão monolítica (não recomendada):
 
-```bash
-python CAMERA.PY
-```
+
 
 ## Vídeo Demonstrativo
 
