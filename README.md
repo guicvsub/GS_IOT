@@ -21,7 +21,7 @@ Este projeto serve de apoio para o GS (Global Solution) e utiliza visão computa
 
 ## Instruções de Uso
 
-<!-- Adicionar instruções de uso aqui -->
+
 
 ## Execução do Requirements
 
@@ -57,8 +57,7 @@ python main.py
 
 ## Vídeo Demonstrativo
 
-<!-- Adicionar link do vídeo demonstrativo do YouTube aqui -->
-
+https://www.youtube.com/watch?v=Jdg7mSGc0Lw&feature=youtu.be
 ## Integrantes
 
 | Nome | RM |
