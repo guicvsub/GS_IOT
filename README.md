@@ -19,7 +19,6 @@ Este projeto serve de apoio para o GS (Global Solution) e utiliza visão computa
 - **NumPy**: Manipulação de arrays e operações matemáticas
 - **Matplotlib**: Visualização de dados e gráficos
 
-## Instruções de Uso
 
 
 
